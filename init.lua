@@ -84,6 +84,10 @@ I hope you enjoy your Neovim journey,
 P.S. You can delete this when you're done too. It's your config now! :)
 --]]
 
+-- disable netrw at the very start of your init.lua
+-- this is for nvim tree plugin
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -91,7 +95,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -166,7 +170,7 @@ vim.opt.confirm = true
 
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
-vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>', { desc = 'Clear highlights on search' })
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
@@ -477,6 +481,7 @@ require('lazy').setup({
       { 'williamboman/mason.nvim', opts = {} },
       'williamboman/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
+      'nvim-java/nvim-java',
 
       -- Useful status updates for LSP.
       { 'j-hui/fidget.nvim', opts = {} },
@@ -723,6 +728,15 @@ require('lazy').setup({
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
             require('lspconfig')[server_name].setup(server)
           end,
+          jdtls = function()
+            require('java').setup {
+              -- Your custom jdtls settings goes here
+            }
+
+            require('lspconfig').jdtls.setup {
+              -- Your custom nvim-java configuration goes here
+            }
+          end,
         },
       }
     end,
@@ -936,7 +950,7 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'java' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -965,13 +979,46 @@ require('lazy').setup({
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug',
+  require 'kickstart.plugins.debug',
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
   -- require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
+  {
+    'nvim-tree/nvim-tree.lua',
+    version = '*',
+    lazy = false,
+    dependencies = {
+      'nvim-tree/nvim-web-devicons',
+    },
+    config = function()
+      local function my_on_attach(bufnr)
+        local api = require 'nvim-tree.api'
 
+        local function opts(desc)
+          return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+        end
+
+        local function test()
+          api.tree.toggle { path = vim.fn.getcwd(), find_file = false, update_root = false, focus = true }
+        end
+
+        -- default mappings
+        api.config.mappings.default_on_attach(bufnr)
+
+        -- custom mappingsf
+        --vim.keymap.set('n', '<C-t>', function()
+        --  api.tree.toggle { path = vim.fn.getcwd(), find_file = false, update_root = false, focus = true }
+        --end, opts 'Toggle Tree')
+        vim.keymap.set('n', '<C-t>', api.tree.toggle, opts 'Toggle Tree')
+      end
+
+      require('nvim-tree').setup {
+        on_attach = my_on_attach,
+      }
+    end,
+  },
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
   --
