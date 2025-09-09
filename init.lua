@@ -168,9 +168,43 @@ vim.o.scrolloff = 10
 -- See `:help 'confirm'`
 vim.o.confirm = true
 
+-- auto-session recommends these vim session options  https://github.com/rmagatti/auto-session?tab=readme-ov-file#recommended-sessionoptions-config
+vim.o.sessionoptions = 'blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions'
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
+--
+-- Custom Keymaps
+-- Move visual selection up and down
+vim.keymap.set('v', 'J', ":m '>+1<CR>gv=gv")
+vim.keymap.set('v', 'K', ":m '<-2<CR>gv=gv")
+--
+-- Diff split files hotkeys
+-- Go in file A and use first key to save file path in register 0
+-- Go in file B and use second key to activate vertical split using current buffer and previously saved path
 
+vim.keymap.set('n', '<leader>df', function()
+  return ':vert diffsplit ' .. vim.fn.expand '#:p' .. '<CR>'
+end, { desc = '[D]i[FF] current buffer with previous file', noremap = true, expr = true })
+--
+-- Stay in indent mode
+-- Visual mode
+vim.keymap.set('v', '<', '<gv', { silent = true, noremap = true })
+vim.keymap.set('v', '>', '>gv', { silent = true, noremap = true })
+--
+vim.keymap.set('v', '<C-c>c', '"+y', { desc = '[C]opy to system clipboard' })
+vim.keymap.set('n', '<C-c>p', '"+p', { desc = '[P]aste from system clipboard' })
+vim.keymap.set('v', '<C-c>p', "\"+p:call setreg('+', getreg('*'))<CR>", { desc = '[P]aste from system clipboard (visual)' })
+-- Replace string globally in buffer
+vim.keymap.set('v', '<leader>r', 'y:%s/<C-r>0/', { desc = '[R]eplace visual selected string globally with something' })
+
+-- If we want to do fast comments of single line and edit for debugging
+vim.keymap.set('n', 'yc', 'yygccp', { remap = true, desc = 'Duplicate a line and comment out first line' })
+
+-- Same as above but with code blocks selected in visual mode
+vim.keymap.set('v', '<leader>C', 'ygvgc`>p', { remap = true, desc = '[C]opy to a comment above' })
+
+vim.keymap.set('n', '<leader>xc', ":call setreg('+', expand('%:.') .. ':' .. line('.'))<CR>", { desc = 'x[C]opy file path and line to clipboard' })
+vim.keymap.set('n', '<leader>fc', ":call setreg('+', expand('%:.'))<CR>", { desc = 'x[C]opy file path to clipboard' })
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>', { desc = 'Clear highlights on search' })
@@ -476,6 +510,77 @@ require('lazy').setup({
     end,
   },
 
+  -- nvim-jdtls specific plugin to use the most from the jdtls LSP
+  {
+    'mfussenegger/nvim-jdtls',
+    ft = 'java',
+    config = function()
+      local on_attach = function(client, bufnr)
+        -- require('plugins.configs.lspconfig').on_attach(client, bufnr)
+        require('lspconfig').on_attach(client, bufnr)
+      end
+      -- If you started neovim within `~/dev/xy/project-1` this would resolve to `project-1`
+      -- local capabilities = require('lspconfig.configs.jdtls')
+      local project_name = vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t')
+      local workspace_dir = '/home/john/eclipse-jdtls/workspaces/' .. project_name
+
+      local config = {
+        -- cmd = { '/home/john/eclipse-jdtls/jdt-language-server-1.47.0-202505151856/bin/jdtls' },
+        cmd = {
+          -- 💀
+          'java', -- or '/path/to/java21_or_newer/bin/java'
+          -- depends on if `java` is in your $PATH env variable and if it points to the right version.
+
+          '-Declipse.application=org.eclipse.jdt.ls.core.id1',
+          '-javaagent:/home/john/eclipse-jdtls/lombok.jar',
+          '-Dosgi.bundles.defaultStartLevel=4',
+          '-Declipse.product=org.eclipse.jdt.ls.core.product',
+          '-Dlog.protocol=true',
+          '-Dlog.level=ALL',
+          '-Xmx1g',
+          '--add-modules=ALL-SYSTEM',
+          '--add-opens',
+          'java.base/java.util=ALL-UNNAMED',
+          '--add-opens',
+          'java.base/java.lang=ALL-UNNAMED',
+
+          -- 💀
+          '-jar',
+          '/home/john/eclipse-jdtls/jdt-language-server-1.47.0-202505151856/plugins/org.eclipse.equinox.launcher_1.7.0.v20250424-1814.jar',
+          -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                       ^^^^^^^^^^^^^^
+          -- Must point to the                                                     Change this to
+          -- eclipse.jdt.ls installation                                           the actual version
+
+          -- 💀
+          '-configuration',
+          '/home/john/eclipse-jdtls/jdt-language-server-1.47.0-202505151856/config_linux',
+          -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^        ^^^^^^
+          -- Must point to the                      Change to one of `linux`, `win` or `mac`
+          -- eclipse.jdt.ls installation            Depending on your system.
+
+          -- 💀
+          -- See `data directory configuration` section in the README
+          '-data',
+          workspace_dir,
+        },
+
+        -- on_attach = on_attach,
+
+        -- capabilities = capabilities,
+
+        -- root_dir = vim.fs.dirname(vim.fs.find({ 'gradlew', '.git', 'mvnw', 'pom.xml' }, { upward = true })[1]),
+        root_dir = vim.fs.dirname(vim.fs.find({ 'gradlew', '.git', 'mvnw', 'pom.xml' }, { upward = true })[1]),
+      }
+      -- require('jdtls').start_or_attach(config)
+      vim.api.nvim_create_autocmd('FileType', {
+        pattern = 'java',
+        callback = function()
+          require('jdtls').start_or_attach(config)
+        end,
+      })
+    end,
+  },
+
   -- LSP Plugins
   {
     -- Main LSP Configuration
@@ -486,7 +591,8 @@ require('lazy').setup({
       -- NOTE: `opts = {}` is the same as calling `require('mason').setup({})`
       { 'mason-org/mason.nvim', opts = {} },
       'WhoIsSethDaniel/mason-tool-installer.nvim',
-      'nvim-java/nvim-java',
+      -- 'mfussenegger/nvim-jdtls',
+      -- 'nvim-java/nvim-java',
 
       -- Useful status updates for LSP.
       { 'j-hui/fidget.nvim', opts = {} },
@@ -608,6 +714,41 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
+        --
+        -- jdtls = {
+        --   cmd = { '/home/john/eclipse-jdtls/jdt-language-server-1.47.0-202505151856/bin/jdtls' },
+        --   root_dir = vim.fs.dirname(vim.fs.find({ 'gradlew', '.git', 'mvnw', 'pom.xml' }, { upward = true })[1]),
+        -- },
+        --
+        -- jdtls = {
+        --
+        -- },
+        gopls = {
+          settings = {
+            gopls = {
+              analyses = {
+                unusedparams = true,
+              },
+              staticcheck = true,
+              gofumpt = true,
+            },
+          },
+        },
+
+        lua_ls = {
+          -- cmd= { ... },
+          -- filetypes = { ... },
+          -- capabilities = {},
+          settings = {
+            Lua = {
+              completion = {
+                callSnippet = 'Replace',
+              },
+              -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
+              -- diagnostics = { disable = { 'missing-fields' } },
+            },
+          },
+        },
       }
 
       -- Ensure the servers and tools above are installed
@@ -664,18 +805,59 @@ require('lazy').setup({
   { -- Autoformat
     'stevearc/conform.nvim',
     event = { 'BufWritePre' },
+    init = function()
+      vim.api.nvim_create_user_command('FormatDisable', function(args)
+        if args.bang then
+          -- FormatDisable! will disable formatting just for this buffer
+          vim.b.disable_autoformat = true
+        else
+          vim.g.disable_autoformat = true
+        end
+      end, {
+        desc = 'Disable autoformat-on-save',
+        bang = true,
+      })
+      vim.api.nvim_create_user_command('FormatEnable', function()
+        vim.b.disable_autoformat = false
+        vim.g.disable_autoformat = false
+      end, {
+        desc = 'Re-enable autoformat-on-save',
+      })
+    end,
+
     cmd = { 'ConformInfo' },
     keys = {
       {
-        '<leader>f',
-        function() require('conform').format { async = true, lsp_format = 'fallback' } end,
+        '<leader>cf',
+        function()
+          require('conform').format { async = true, lsp_format = 'fallback' }
+        end,
         mode = '',
         desc = '[F]ormat buffer',
+      },
+      {
+        '<leader>ct',
+        function()
+          if vim.g.disable_autoformat then
+            vim.g.disable_autoformat = false
+            vim.b.disable_autoformat = false
+          elseif not vim.g.disable_autoformat then
+            vim.g.disable_autoformat = true
+            vim.b.disable_autoformat = true
+          end
+        end,
+        mode = '',
+        desc = '[C]onform [F]ormat toggle',
       },
     },
     opts = {
       notify_on_error = false,
       format_on_save = function(bufnr)
+        -- Disable with a global or buffer-local variable
+        if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+          return nil
+        end
+
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
@@ -875,7 +1057,7 @@ require('lazy').setup({
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  require 'kickstart.plugins.debug',
+  -- require 'kickstart.plugins.debug',
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
@@ -893,11 +1075,7 @@ require('lazy').setup({
         local api = require 'nvim-tree.api'
 
         local function opts(desc)
-          return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
-        end
-
-        local function test()
-          api.tree.toggle { path = vim.fn.getcwd(), find_file = false, update_root = false, focus = true }
+          return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = false, silent = true, nowait = true }
         end
 
         -- default mappings
@@ -906,20 +1084,171 @@ require('lazy').setup({
         -- custom mappingsf
         --vim.keymap.set('n', '<C-t>', function()
         --  api.tree.toggle { path = vim.fn.getcwd(), find_file = false, update_root = false, focus = true }
-        --end, opts 'Toggle Tree')
-        vim.keymap.set('n', '<C-t>', api.tree.toggle, opts 'Toggle Tree')
+        vim.keymap.set('n', '<leader>ft', api.tree.toggle, { desc = 'Toggle Tree' })
+        vim.keymap.set('n', '<leader>ff', ':NvimTreeFindFile<CR>', { desc = 'nvim-tree: Find File in Tree' })
       end
 
+      -- Open leafs of tree to current file in buffer
       require('nvim-tree').setup {
+        sort = {
+          sorter = 'case_sensitive',
+        },
+        view = {
+          width = {
+            min = 30,
+          },
+          preserve_window_proportions = true,
+          centralize_selection = true,
+        },
+        renderer = {
+          group_empty = true,
+        },
+        filters = {
+          dotfiles = false,
+        },
         on_attach = my_on_attach,
       }
     end,
+  },
+  {
+    'ThePrimeagen/harpoon',
+    branch = 'harpoon2',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    config = function()
+      local harpoon = require 'harpoon'
+      harpoon:setup {}
+
+      -- basic telescope configuration
+      local conf = require('telescope.config').values
+      local function toggle_telescope(harpoon_files)
+        local make_finder = function(harpoon_files)
+          -- harpoon files can have nil and we need to manually filter them out for Telescope to work
+          local file_paths = {}
+          local items = harpoon_files.items
+          local len = harpoon_files._length
+          for i = 1, len do
+            file_paths[i] = ''
+            local item = items[i]
+            if item ~= nil then
+              file_paths[i] = item.value
+            end
+          end
+          return require('telescope.finders').new_table {
+            results = file_paths,
+          }
+        end
+
+        require('telescope.pickers')
+          .new({}, {
+            prompt_title = 'Harpoon',
+            finder = make_finder(harpoon_files),
+            previewer = conf.file_previewer {},
+            sorter = conf.generic_sorter {},
+            attach_mappings = function(prompt_bufnr, map)
+              map('i', '<C-d>', function()
+                local state = require 'telescope.actions.state'
+                local selection = state.get_selected_entry()
+                local current_picker = state.get_current_picker(prompt_bufnr)
+                harpoon:list():remove_at(selection.index)
+                current_picker:refresh(make_finder(harpoon:list()))
+              end)
+              return true
+            end,
+          })
+          :find()
+      end
+
+      vim.keymap.set('n', '<leader>l', function()
+        toggle_telescope(harpoon:list())
+      end, { desc = 'Open harpoon window' })
+      vim.keymap.set('n', '<leader>a', function()
+        harpoon:list():add()
+      end, { desc = 'Add current file to harpoon' })
+      -- vim.keymap.set("n", "<C-e>", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end)
+      --
+      -- At the telescope prompt, delete selected file from harpoon list
+      -- vim.keymap.set('n', '<leader>r', function()
+      --   -- return '<CR> <BAR> '  harpoon:list():remove() .. ' <C-o>'
+      --   vim.cmd [[
+      --     execute 'normal! \<CR>'
+      --   ]]
+      --   harpoon:list():remove()
+      --   vim.cmd [[
+      --     execute 'normal! \<C-o>'
+      --   ]]
+      -- end, { desc = '[R]emove current file from harpoon' })
+
+      vim.keymap.set('n', '<C-q>', function()
+        harpoon:list():select(1)
+      end)
+      vim.keymap.set('n', '<C-w>', function()
+        harpoon:list():select(2)
+      end)
+      vim.keymap.set('n', '<C-e>', function()
+        harpoon:list():select(3)
+      end)
+      vim.keymap.set('n', '<C-r>', function()
+        harpoon:list():select(4)
+      end)
+
+      -- Toggle previous & next buffers stored within Harpoon list
+      vim.keymap.set('n', '<C-s-p>', function()
+        harpoon:list():prev()
+      end)
+      vim.keymap.set('n', '<C-s-p>', function()
+        harpoon:list():next()
+      end)
+
+      local harpoon_extensions = require 'harpoon.extensions'
+      harpoon:extend(harpoon_extensions.builtins.highlight_current_file())
+    end,
+  },
+  {
+    'rmagatti/auto-session',
+    lazy = false,
+    keys = {
+      -- will use Telescope if instlalled or vim.ui.select if not
+      { '<leader>sl', '<cmd>AutoSession search<CR>', desc = '[S]ession: [L]oad last session' },
+      { '<leader>ss', '<cmd>AutoSession save<CR>', desc = '[S]ession: [S]ave session' },
+      { '<leader>st', '<cmd>AutoSession toggle<CR>', desc = '[S]ession: [T]oggle auto session' },
+    },
+    opts = {
+      suppressed_dirs = { '~/', '~/Projects', '~/Downloads', '/' },
+      auto_restore = false, -- manually restore by searching the session, auto restore is destroys some linting.
+      post_restore_cmds = {
+        function()
+          local nvim_tree_api = require 'nvim-tree.api'
+          nvim_tree_api.tree.open()
+          nvim_tree_api.tree.change_root(vim.fn.getcwd())
+          nvim_tree_api.tree.reload()
+        end,
+      },
+      pre_save_cmds = {
+        function()
+          local nvim_tree_api = require 'nvim-tree.api'
+          nvim_tree_api.tree.close()
+        end,
+      },
+
+      session_lens = {
+        picker = 'telescope',
+        mappings = {
+          -- load_last_session = '<leader>sl',
+          -- mapping are used in the session-lens picker (Telescope or vim.ui.select)
+          copy_session = { 'i', '<C-y>' },
+          delete_session = { 'i', '<C-d>' },
+          alternate_session = { 'i', '<C-s>' },
+        },
+        load_on_setup = true,
+      },
+    },
+    cond = not vim.g.started_by_firenvim and not vim.g.vscode,
   },
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
