@@ -182,9 +182,12 @@ vim.keymap.set('v', 'K', ":m '<-2<CR>gv=gv")
 -- Go in file A and use first key to save file path in register 0
 -- Go in file B and use second key to activate vertical split using current buffer and previously saved path
 
-vim.keymap.set('n', '<leader>df', function()
-  return ':vert diffsplit ' .. vim.fn.expand '#:p' .. '<CR>'
-end, { desc = '[D]i[FF] current buffer with previous file', noremap = true, expr = true })
+vim.keymap.set(
+  'n',
+  '<leader>df',
+  function() return ':vert diffsplit ' .. vim.fn.expand '#:p' .. '<CR>' end,
+  { desc = '[D]i[FF] current buffer with previous file', noremap = true, expr = true }
+)
 --
 -- Stay in indent mode
 -- Visual mode
@@ -574,9 +577,7 @@ require('lazy').setup({
       -- require('jdtls').start_or_attach(config)
       vim.api.nvim_create_autocmd('FileType', {
         pattern = 'java',
-        callback = function()
-          require('jdtls').start_or_attach(config)
-        end,
+        callback = function() require('jdtls').start_or_attach(config) end,
       })
     end,
   },
@@ -590,6 +591,8 @@ require('lazy').setup({
       -- Mason must be loaded before its dependents so we need to set it up here.
       -- NOTE: `opts = {}` is the same as calling `require('mason').setup({})`
       { 'mason-org/mason.nvim', opts = {} },
+      -- This plugin streamlines Neovim's LSP setup by automating server installation and activation, providing helpful management commands, and mapping mason.nvim packages to nvim-lspconfig configurations.
+      { 'mason-org/mason-lspconfig.nvim', opts = {} },
       'WhoIsSethDaniel/mason-tool-installer.nvim',
       -- 'mfussenegger/nvim-jdtls',
       -- 'nvim-java/nvim-java',
@@ -724,31 +727,32 @@ require('lazy').setup({
         --
         -- },
         gopls = {
-          settings = {
-            gopls = {
-              analyses = {
-                unusedparams = true,
-              },
-              staticcheck = true,
-              gofumpt = true,
-            },
-          },
+          -- settings = {
+          --   gopls = {
+          --     analyses = {
+          --       unusedparams = true,
+          --     },
+          --     staticcheck = true,
+          --     gofumpt = true,
+          --   },
+          -- },
         },
+        clangd = {},
 
-        lua_ls = {
-          -- cmd= { ... },
-          -- filetypes = { ... },
-          -- capabilities = {},
-          settings = {
-            Lua = {
-              completion = {
-                callSnippet = 'Replace',
-              },
-              -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-              -- diagnostics = { disable = { 'missing-fields' } },
-            },
-          },
-        },
+        -- lua_ls = {
+        --   -- cmd= { ... },
+        --   -- filetypes = { ... },
+        --   -- capabilities = {},
+        --   settings = {
+        --     Lua = {
+        --       completion = {
+        --         callSnippet = 'Replace',
+        --       },
+        --       -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
+        --       -- diagnostics = { disable = { 'missing-fields' } },
+        --     },
+        --   },
+        -- },
       }
 
       -- Ensure the servers and tools above are installed
@@ -829,9 +833,7 @@ require('lazy').setup({
     keys = {
       {
         '<leader>cf',
-        function()
-          require('conform').format { async = true, lsp_format = 'fallback' }
-        end,
+        function() require('conform').format { async = true, lsp_format = 'fallback' } end,
         mode = '',
         desc = '[F]ormat buffer',
       },
@@ -854,9 +856,7 @@ require('lazy').setup({
       notify_on_error = false,
       format_on_save = function(bufnr)
         -- Disable with a global or buffer-local variable
-        if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
-          return nil
-        end
+        if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then return nil end
 
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
@@ -1074,9 +1074,7 @@ require('lazy').setup({
       local function my_on_attach(bufnr)
         local api = require 'nvim-tree.api'
 
-        local function opts(desc)
-          return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = false, silent = true, nowait = true }
-        end
+        local function opts(desc) return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = false, silent = true, nowait = true } end
 
         -- default mappings
         api.config.mappings.default_on_attach(bufnr)
@@ -1129,9 +1127,7 @@ require('lazy').setup({
           for i = 1, len do
             file_paths[i] = ''
             local item = items[i]
-            if item ~= nil then
-              file_paths[i] = item.value
-            end
+            if item ~= nil then file_paths[i] = item.value end
           end
           return require('telescope.finders').new_table {
             results = file_paths,
@@ -1158,12 +1154,8 @@ require('lazy').setup({
           :find()
       end
 
-      vim.keymap.set('n', '<leader>l', function()
-        toggle_telescope(harpoon:list())
-      end, { desc = 'Open harpoon window' })
-      vim.keymap.set('n', '<leader>a', function()
-        harpoon:list():add()
-      end, { desc = 'Add current file to harpoon' })
+      vim.keymap.set('n', '<leader>l', function() toggle_telescope(harpoon:list()) end, { desc = 'Open harpoon window' })
+      vim.keymap.set('n', '<leader>a', function() harpoon:list():add() end, { desc = 'Add current file to harpoon' })
       -- vim.keymap.set("n", "<C-e>", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end)
       --
       -- At the telescope prompt, delete selected file from harpoon list
@@ -1178,26 +1170,14 @@ require('lazy').setup({
       --   ]]
       -- end, { desc = '[R]emove current file from harpoon' })
 
-      vim.keymap.set('n', '<C-q>', function()
-        harpoon:list():select(1)
-      end)
-      vim.keymap.set('n', '<C-w>', function()
-        harpoon:list():select(2)
-      end)
-      vim.keymap.set('n', '<C-e>', function()
-        harpoon:list():select(3)
-      end)
-      vim.keymap.set('n', '<C-r>', function()
-        harpoon:list():select(4)
-      end)
+      vim.keymap.set('n', '<C-q>', function() harpoon:list():select(1) end)
+      vim.keymap.set('n', '<C-w>', function() harpoon:list():select(2) end)
+      vim.keymap.set('n', '<C-e>', function() harpoon:list():select(3) end)
+      vim.keymap.set('n', '<C-r>', function() harpoon:list():select(4) end)
 
       -- Toggle previous & next buffers stored within Harpoon list
-      vim.keymap.set('n', '<C-s-p>', function()
-        harpoon:list():prev()
-      end)
-      vim.keymap.set('n', '<C-s-p>', function()
-        harpoon:list():next()
-      end)
+      vim.keymap.set('n', '<C-s-p>', function() harpoon:list():prev() end)
+      vim.keymap.set('n', '<C-s-p>', function() harpoon:list():next() end)
 
       local harpoon_extensions = require 'harpoon.extensions'
       harpoon:extend(harpoon_extensions.builtins.highlight_current_file())
