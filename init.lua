@@ -165,6 +165,9 @@ vim.opt.scrolloff = 10
 -- See `:help 'confirm'`
 vim.opt.confirm = true
 
+-- Disable fixeol which automatically adds a newline at the end of files
+vim.opt.fixendofline = false
+
 -- auto-session recommends these vim session options  https://github.com/rmagatti/auto-session?tab=readme-ov-file#recommended-sessionoptions-config
 vim.o.sessionoptions = 'blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions'
 -- [[ Basic Keymaps ]]
@@ -458,7 +461,7 @@ require('lazy').setup({
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
-      vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
+      -- vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
@@ -466,6 +469,10 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+      -- Find files and in dotfiles, respecting .gitignore
+      vim.keymap.set('n', '<leader>sf', function()
+        builtin.find_files { find_command = { 'rg', '--files', '--hidden', '-g', '!.git' } }
+      end, { desc = '[S]earch [F]iles' })
 
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
@@ -550,8 +557,9 @@ require('lazy').setup({
 
         -- capabilities = capabilities,
 
-        -- root_dir = vim.fs.dirname(vim.fs.find({ 'gradlew', '.git', 'mvnw', 'pom.xml' }, { upward = true })[1]),
         root_dir = vim.fs.dirname(vim.fs.find({ 'gradlew', '.git', 'mvnw', 'pom.xml' }, { upward = true })[1]),
+        -- root_dir = vim.fs.root(0, vim.fs.find({ 'gradlew', '.git', 'mvnw', 'pom.xml' }, { upward = true })[1]),
+        -- root_dir = vim.fs.dirname(vim.fs.find({ '.git' }, { upward = true })[1]),
       }
       -- require('jdtls').start_or_attach(config)
       vim.api.nvim_create_autocmd('FileType', {
@@ -796,6 +804,28 @@ require('lazy').setup({
         -- jdtls = {
         --
         -- },
+        yamlls = {
+          -- settings = {
+          --   yaml = {
+          --     schemas = {
+          --       ['https://json.schemastore.org/github-workflow.json'] = '.github/workflows/*',
+          --       ['https://json.schemastore.org/github-action.json'] = '.github/action.{yml,yaml}',
+          --       ['https://json.schemastore.org/prettierrc.json'] = '.prettierrc.{yml,yaml}',
+          --       ['https://json.schemastore.org/stylelintrc.json'] = '.stylelintrc.{yml,yaml}',
+          --       ['https://json.schemastore.org/kustomization.json'] = 'kustomization.{yml,yaml}',
+          --     },
+          --   },
+          -- },
+        },
+        helm_ls = {
+          settings = {
+            ['helm-ls'] = {
+              yamlls = {
+                path = 'yaml-language-server',
+              },
+            },
+          },
+        },
         gopls = {
           settings = {
             gopls = {
@@ -819,6 +849,33 @@ require('lazy').setup({
               },
               -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
               -- diagnostics = { disable = { 'missing-fields' } },
+            },
+          },
+        },
+
+        terraformls = { -- terraform language server
+          -- root_dir = vim.fs.dirname(vim.fs.find({ '*.tf', '*.tfvars' }, { upward = true })[1]),
+
+          settings = {
+            terraform = {
+              enableImports = true,
+
+              root_dir = function(startpath)
+                local utils = require 'lspconfig.util'
+
+                local function matcher(path)
+                  if utils.path.is_dir(path) then
+                    -- If path/.. doesn't contain any .tf files, then path is root_dir
+                    local tf_pat = utils.path.join(utils.path.escape_wildcards(utils.path.dirname(path)), '*.tf')
+                    if #vim.fn.glob(tf_pat) == 0 then
+                      return path
+                    end
+                  end
+                end
+
+                startpath = utils.strip_archive_subpath(startpath)
+                return utils.search_ancestors(startpath, matcher)
+              end,
             },
           },
         },
@@ -1186,7 +1243,23 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'java', 'python' },
+      ensure_installed = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'java',
+        'python',
+        'helm',
+        'yaml',
+      },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -1407,6 +1480,7 @@ require('lazy').setup({
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
   { import = 'custom.plugins' },
+  { 'qvalentin/helm-ls.nvim', ft = 'helm' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
