@@ -1,0 +1,12 @@
+return {
+  'soulis-1256/eagle.nvim',
+  opts = {
+    keyboard_mode = true,
+  },
+  config = function(_, opts)
+    require('eagle').setup(opts)
+    vim.o.mousemoveevent = true
+    vim.keymap.set('n', '<C-i>', '<C-i>', { noremap = true, silent = true })
+    vim.keymap.set('n', '<Tab>', ':EagleWin<CR>', { noremap = true, silent = true })
+  end,
+}

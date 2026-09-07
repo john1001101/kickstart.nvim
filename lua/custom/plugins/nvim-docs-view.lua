@@ -1,0 +1,15 @@
+-- return {
+--   'amrbashir/nvim-docs-view',
+--   lazy = true,
+--   cmd = 'DocsViewToggle',
+--   opts = {
+--     position = 'right',
+--     width = 60,
+--     -- update_mode = 'manual',
+--   },
+-- vim.keymap.set('n', '<S-Tab>', ':DocsViewToggle<CR>', { noremap = true, silent = true }),
+-- }
+--
+-- #NOTE: We use eagle instead <Tab>
+-- NOTE: use 'i' <C-space> to toggle docs view in insert mode
+return {}

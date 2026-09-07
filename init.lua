@@ -118,7 +118,7 @@ vim.o.showmode = false
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 --  Remove this option if you want your OS clipboard to remain independent.
 --  See `:help 'clipboard'`
-vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
+-- vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
 
 -- Enable break indent
 vim.o.breakindent = true
@@ -199,7 +199,8 @@ vim.keymap.set('v', '>', '>gv', { silent = true, noremap = true })
 --
 vim.keymap.set('v', '<C-c>c', '"+y', { desc = '[C]opy to system clipboard' })
 vim.keymap.set('n', '<C-c>p', '"+p', { desc = '[P]aste from system clipboard' })
-vim.keymap.set('v', '<C-c>p', "\"+p:call setreg('+', getreg('*'))<CR>", { desc = '[P]aste from system clipboard (visual)' })
+-- vim.keymap.set('v', '<C-c>p', '"_d"+P', { desc = '[P]aste from system clipboard without yanking replaced text' })
+-- vim.keymap.set('v', '<C-c>p', "\"+p:call setreg('+', getreg('*'))<CR>", { desc = '[P]aste from system clipboard (visual)' })
 -- Replace string globally in buffer
 vim.keymap.set('v', '<leader>r', 'y:%s/<C-r>0/', { desc = '[R]eplace visual selected string globally with something' })
 
@@ -255,7 +256,11 @@ vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left wind
 vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
-
+-- Resize splits with Ctrl+, (decrease) and Ctrl+. (increase)
+vim.keymap.set('n', '<C-,>', '10<C-w><', { desc = 'Decrease vertical split width' })
+vim.keymap.set('n', '<C-.>', '10<C-w>>', { desc = 'Increase vertical split width' })
+vim.keymap.set('n', '<C-S-,>', '10<C-w>-', { desc = 'Decrease horizontal split height' })
+vim.keymap.set('n', '<C-S-.>', '10<C-w>+', { desc = 'Increase horizontal split height' })
 -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
 -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
 -- vim.keymap.set("n", "<C-S-l>", "<C-w>L", { desc = "Move window to the right" })
@@ -704,6 +709,10 @@ require('lazy').setup({
           if client and client:supports_method('textDocument/inlayHint', event.buf) then
             map('<leader>th', function() vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf }) end, '[T]oggle Inlay [H]ints')
           end
+
+          -- Disable terraformls semantic tokens provider, as it is not working properly with heredocs
+          -- https://github.com/hashicorp/terraform-ls/issues/2125
+          if client and client.name == 'terraformls' then client.server_capabilities.semanticTokensProvider = nil end
         end,
       })
 
@@ -786,28 +795,6 @@ require('lazy').setup({
         -- },
 
         terraformls = { -- terraform language server
-          -- root_dir = vim.fs.dirname(vim.fs.find({ '*.tf', '*.tfvars' }, { upward = true })[1]),
-
-          -- settings = {
-          --   terraform = {
-          --     enableImports = true,
-          --
-          --     root_dir = function(startpath)
-          --       local utils = require 'lspconfig.util'
-          --
-          --       local function matcher(path)
-          --         if utils.path.is_dir(path) then
-          --           -- If path/.. doesn't contain any .tf files, then path is root_dir
-          --           local tf_pat = utils.path.join(utils.path.escape_wildcards(utils.path.dirname(path)), '*.tf')
-          --           if #vim.fn.glob(tf_pat) == 0 then return path end
-          --         end
-          --       end
-          --
-          --       startpath = utils.strip_archive_subpath(startpath)
-          --       return utils.search_ancestors(startpath, matcher)
-          --     end,
-          --   },
-          -- },
         },
       }
 
@@ -929,6 +916,10 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+
+        -- Fallback for unconfigured filetypes
+        ['*'] = { 'codespell' }, -- run codespell on everything
+        ['_'] = { 'trim_whitespace' }, -- trim whitespace on unknown filetypes
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
