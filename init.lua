@@ -267,6 +267,11 @@ vim.keymap.set('n', '<C-S-.>', '10<C-w>+', { desc = 'Increase horizontal split h
 -- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
 -- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
 
+vim.filetype.add {
+  extension = {
+    pp = 'puppet',
+  },
+}
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
@@ -778,6 +783,26 @@ require('lazy').setup({
             },
           },
         },
+        puppet = {
+          -- cmd = {
+          --   'puppet-languageserver',
+          --   '--stdio',
+          --   '--debug=/tmp/puppetlsp.log',
+          --   '--local-workspace=/home/john/code/CASA-DS/deployment/commissioning/puppetcode/modules/openstack_neutron',
+          --   '--puppet-settings=--modulepath,/home/john/code/CASA-DS/deployment/commissioning/puppetcode:/home/john/code/CASA-DS/deployment/commissioning/puppetcode/modules:/home/john/code/CASA-DS/deployment/commissioning/puppetcode/modules/openstack_neutron',
+          -- },
+          -- root_markers = { 'manifests', '.puppet-lint.rc', 'hiera.yaml', '.git' },
+          --
+          -- settings = {
+          --   puppet = {
+          --     editorServices = {
+          --       formatOnType = {
+          --         enable = true,
+          --       },
+          --     },
+          --   },
+          -- },
+        },
 
         -- lua_ls = {
         --   -- cmd= { ... },
@@ -916,6 +941,7 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        puppet = { 'puppet-lint' },
 
         -- Fallback for unconfigured filetypes
         ['*'] = { 'codespell' }, -- run codespell on everything
@@ -1089,8 +1115,25 @@ require('lazy').setup({
     build = ':TSUpdate',
     branch = 'main',
     config = function()
-      local parsers =
-        { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'java', 'python', 'helm', 'yaml', 'terraform' }
+      local parsers = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'java',
+        'python',
+        'helm',
+        'yaml',
+        'terraform',
+        'puppet',
+      }
       require('nvim-treesitter').install(parsers)
       vim.api.nvim_create_autocmd('FileType', {
         callback = function(args)
