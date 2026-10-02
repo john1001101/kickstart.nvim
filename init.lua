@@ -173,6 +173,8 @@ vim.opt.fixendofline = false
 
 -- auto-session recommends these vim session options  https://github.com/rmagatti/auto-session?tab=readme-ov-file#recommended-sessionoptions-config
 vim.o.sessionoptions = 'blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions'
+
+vim.opt.clipboard = "unnamedplus"
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 --
